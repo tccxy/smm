@@ -23,8 +23,7 @@
 #define MAX_PID_NUM 128
 #define PID_NAME_MAX_LEN 32   //进程名字最大长度
 #define DEFAULT_INTERVAL 1000 //默认的监控时间间隔
-#define MIN_INTERVAL 10       //最小的监控时间间隔
-
+#define MIN_INTERVAL 1000       //最小的监控时间间隔
 
 /**
  * @brief smm进程名字
@@ -90,7 +89,7 @@ struct smm_contrl
     struct smm_pid_result pid_result[MAX_PID_NUM];
 };
 
-typedef void (*dealfun)(unsigned int, struct smm_contrl *, void *); //钩子
+typedef void (*dealfun)(unsigned int, struct smm_contrl *, int); //钩子
 
 typedef enum e_dealtype
 {
@@ -99,8 +98,9 @@ typedef enum e_dealtype
     CPU_KERNEL_RATIO,
     CPU_VIR_RATIO,
     MEM_RATIO,
+    SMM_M_END,
 
-    PID_CPU_RATIO = 20,
+    PID_CPU_RATIO,
     PID_CPU_INDEX,
     PID_MEM_RATIO,
     PID_MEM_RSS,
@@ -108,12 +108,13 @@ typedef enum e_dealtype
     PID_IO_RD_RATE,
     PID_IO_WR_RATE,
     PID_NET_SD_RATE,
-    PID_NET_RC_RATE
+    PID_NET_RC_RATE,
+    SMM_PID_M_END
 } dealtype;
 
 struct smm_dealentity
 {
-    int deal_project;
+    int deal_type;
     dealfun p_dealfun;
 };
 

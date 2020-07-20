@@ -42,6 +42,7 @@ struct smm_dealentity entry_register[] =
         {CPU_KERNEL_RATIO, cpu_kernel_ratio},
         {CPU_VIR_RATIO, cpu_vir_ratio},
         {MEM_RATIO, mem_ratio},
+        {SMM_M_END, NULL},
 
         {PID_CPU_RATIO, pid_cpu_ratio},
         {PID_CPU_INDEX, pid_cpu_index},
@@ -203,6 +204,56 @@ static void smm_cmd_parse(u32 opt, u8 *optarg, u8 *argv)
 }
 
 /**
+ * @brief ms级别延时
+ * 
+ * @param mSec 
+ */
+void ms_sleep(u32 mSec)
+{
+    struct timeval tv;
+    tv.tv_sec = mSec / 1000;
+    tv.tv_usec = (mSec % 1000) * 1000;
+    int err;
+    do
+    {
+        err = select(0, NULL, NULL, NULL, &tv);
+    } while (err < 0 && errno == EINTR);
+}
+
+/**
+ * @brief 监控实体线程
+ * 
+ * @param arg 
+ */
+void monitor_task(void *arg)
+{
+    struct smm_contrl *contrl = (struct smm_contrl *)arg;
+    u8 index = 0, pid_index = 0;
+    u32 pid;
+
+    zlog_debug(zc, "monitor_task in\r\n");
+
+
+    /*系统级监控*/
+    for (index = CPU_RATIO; index < SMM_M_END; index++)
+    {
+        entry_register[index].p_dealfun(0, contrl, index);
+    }
+
+    /*进程级监控*/
+    for (pid_index = 0; pid_index < contrl->pidnum; pid_index++)
+    {
+        pid = contrl->smm_pid[pid_index];
+        for (index = PID_CPU_RATIO; index < SMM_PID_M_END; index++)
+        {
+            entry_register[index].p_dealfun(pid, contrl, index);
+        }
+    }
+
+    smm_deal_result(contrl);
+}
+
+/**
  * @brief 主函数
  * 
  * @param argc 
@@ -255,6 +306,11 @@ int main(int argc, char *argv[])
         }
     }
 
+    while (1)
+    {
+        ms_sleep(g_smm_contrl.interval);
+        monitor_task((void *)&g_smm_contrl);
+    }
     zlog_fini();
     return 0;
 }
