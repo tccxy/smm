@@ -12,6 +12,7 @@
 #ifndef _ERROR_H_
 #define _ERROR_H_
 
-
+#define SUCCESS 0 /**成功*/
+#define ERROR 1   /**错误*/
 
 #endif

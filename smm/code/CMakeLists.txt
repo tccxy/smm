@@ -4,6 +4,9 @@ project(smm)
 # name
 set(PROJECT_NAME smm)
 
+add_definitions(-DMAJOR_VER=1)
+add_definitions(-DMINOR_VER=0)
+
 option(ARM32 "option for ARM32" OFF)
 
 # set cmake cross compile

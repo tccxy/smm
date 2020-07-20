@@ -16,10 +16,35 @@
     zlog(cat, __FILE__, sizeof(__FILE__) - 1, __func__, sizeof(__func__) - 1, __LINE__, \
          dealmode, format, ##args)
 
-#define DISPLAY_MODE ZLOG_LEVEL_DEBUG //使用zlog的debug模式
-#define LOG_MODE ZLOG_LEVEL_INFO      //使用zlog的info模式
+//display的模式会同时记录log
+#define DISPLAY_MODE ZLOG_LEVEL_NOTICE //使用zlog的notice模式
+#define LOG_MODE ZLOG_LEVEL_INFO       //使用zlog的info模式
 
 #define MAX_PID_NUM 128
+#define PID_NAME_MAX_LEN 32   //进程名字最大长度
+#define DEFAULT_INTERVAL 1000 //默认的监控时间间隔
+#define MIN_INTERVAL 10       //最小的监控时间间隔
+
+
+/**
+ * @brief smm进程名字
+ * 
+ */
+struct smm_pid_name
+{
+    u8 name[PID_NAME_MAX_LEN];
+};
+
+/**
+ * @brief smm pid信息
+ * 
+ */
+struct smm_pid_msg
+{
+    struct smm_pid_name pid_name[MAX_PID_NUM];
+    u32 smm_pid[MAX_PID_NUM];
+    u8 flag;
+};
 
 /**
  * @brief 系统级监控数据
@@ -57,7 +82,7 @@ struct smm_pid_result
 struct smm_contrl
 {
     u32 interval; //监控的时间间隔 单位：mm
-    u8 dealmode;  //0 实时显示 1 记录日志
+    u8 dealmode;  // 实时显示 / 记录日志
     u8 pidnum;    //监控的进程数
     u16 pad;      //保留
     struct smm_result result;
@@ -90,6 +115,6 @@ struct smm_dealentity
 {
     int deal_project;
     dealfun p_dealfun;
-}
+};
 
 #endif

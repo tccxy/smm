@@ -72,9 +72,9 @@
 #include <execinfo.h>
 #include <getopt.h>
 
+#include "types.h"
 #include "smm.h"
 #include "error.h"
-#include "types.h"
 #include "smm_deal.h"
 #include "zlog.h"
 
