@@ -40,8 +40,10 @@ struct smm_dealentity entry_register[] =
         {CPU_RATIO, cpu_ratio},
         {CPU_USR_RATIO, cpu_usr_ratio},
         {CPU_KERNEL_RATIO, cpu_kernel_ratio},
-        {CPU_VIR_RATIO, cpu_vir_ratio},
+        {CPU_SI_RATIO, cpu_si_ratio},
         {MEM_RATIO, mem_ratio},
+        {MEM_CAHE, mem_buffer},
+        {MEM_BUFFER, mem_cache},
         {SMM_M_END, NULL},
 
         {PID_CPU_RATIO, pid_cpu_ratio},
@@ -230,23 +232,26 @@ void monitor_task(void *arg)
     struct smm_contrl *contrl = (struct smm_contrl *)arg;
     u8 index = 0, pid_index = 0;
     u32 pid;
+    struct smm_cpu_mem_stat cpu_stat[2];
+    struct smm_pid_stat pid_stat[2]; //存放两个相近时刻的状态，用作计算
 
     zlog_debug(zc, "monitor_task in\r\n");
 
-
     /*系统级监控*/
+    cpu_stat_update(cpu_stat);
     for (index = CPU_RATIO; index < SMM_M_END; index++)
     {
-        entry_register[index].p_dealfun(0, contrl, index);
+        entry_register[index].p_dealfun(0, contrl, index, (void *)cpu_stat);
     }
 
     /*进程级监控*/
     for (pid_index = 0; pid_index < contrl->pidnum; pid_index++)
     {
         pid = contrl->smm_pid[pid_index];
+        pid_stat_updata(pid, pid_stat);
         for (index = PID_CPU_RATIO; index < SMM_PID_M_END; index++)
         {
-            entry_register[index].p_dealfun(pid, contrl, index);
+            entry_register[index].p_dealfun(pid, contrl, index, (void *)pid_stat);
         }
     }
 
@@ -267,7 +272,7 @@ int main(int argc, char *argv[])
     u32 option_index = 0;
     u8 *string = "lt:p::";
 
-    rc = zlog_init("/home/ab64/test/usp_log.conf");
+    rc = zlog_init("/home/ab64/test/smm_log.conf");
     if (rc)
     {
         printf("init failed\n");

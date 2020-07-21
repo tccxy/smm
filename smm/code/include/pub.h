@@ -78,5 +78,6 @@
 #include "smm_deal.h"
 #include "zlog.h"
 
+extern zlog_category_t *zc;
 
 #endif

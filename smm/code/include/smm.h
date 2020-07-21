@@ -12,7 +12,8 @@
 #ifndef _SMM_H_
 #define _SMM_H_
 
-#define smm_deal(dealmode, format, args...)                                             \
+
+#define smm_deal(cat,dealmode, format, args...)                                             \
     zlog(cat, __FILE__, sizeof(__FILE__) - 1, __func__, sizeof(__func__) - 1, __LINE__, \
          dealmode, format, ##args)
 
@@ -23,8 +24,8 @@
 #define MAX_PID_NUM 128
 #define PID_NAME_MAX_LEN 32   //进程名字最大长度
 #define DEFAULT_INTERVAL 1000 //默认的监控时间间隔
-#define MIN_INTERVAL 1000       //最小的监控时间间隔
-
+#define MIN_INTERVAL 1000     //最小的监控时间间隔
+#define SAMPLE_MS 300         //两次采样的时间间隔
 /**
  * @brief smm进程名字
  * 
@@ -54,8 +55,10 @@ struct smm_result
     double r_cpu_ratio;
     double r_cpu_usr_ratio;
     double r_cpu_kernel_ratio;
-    double r_cpu_vir_ratio;
+    double r_cpu_si_ratio;
     double r_mem_ratio;
+    double r_mem_cache;
+    double r_mem_buffer;
 };
 
 /**
@@ -89,15 +92,17 @@ struct smm_contrl
     struct smm_pid_result pid_result[MAX_PID_NUM];
 };
 
-typedef void (*dealfun)(unsigned int, struct smm_contrl *, int); //钩子
+typedef void (*dealfun)(unsigned int, struct smm_contrl *, int, void *); //钩子
 
 typedef enum e_dealtype
 {
     CPU_RATIO = 0,
     CPU_USR_RATIO,
     CPU_KERNEL_RATIO,
-    CPU_VIR_RATIO,
+    CPU_SI_RATIO,
     MEM_RATIO,
+    MEM_CAHE,
+    MEM_BUFFER,
     SMM_M_END,
 
     PID_CPU_RATIO,
