@@ -17,14 +17,14 @@
  * @param stat 状态信息
  * @return u32 
  */
-static u32 cpu_stat_get(struct smm_cpu_mem_stat *stat)
+static void cpu_stat_get(struct smm_cpu_mem_stat *stat)
 {
     FILE *pfile = NULL;
     char line[128];
     //cpu
     pfile = fopen(FS_STAT, "r");
 
-    fscanf(pfile, "cpu %d %d %d %d %d %d %d %d", &stat->cpu_user,
+    fscanf(pfile, "cpu %llu %llu %llu %llu %llu %llu %llu %llu", &stat->cpu_user,
            &stat->cpu_nice, &stat->cpu_kernel, &stat->cpu_idle,
            &stat->cpu_iowait, &stat->cpu_irq, &stat->cpu_softirq,
            &stat->cpu_stealstolen);
@@ -61,15 +61,52 @@ static u32 cpu_stat_get(struct smm_cpu_mem_stat *stat)
         }
     }
     fclose(pfile);
-    return SUCCESS;
 }
 
 /**
  * @brief 获取pid的状态信息
  * 
  */
-void pid_stat_get(u32 pid, struct smm_pid_stat *stat)
+void pid_stat_get(u32 pid, struct smm_cpu_mem_stat *stat)
 {
+    FILE *pfile = NULL;
+    u8 filename[128] = {0};
+    u8 line[4096] = {0};
+    u8 pid_items = 0;
+
+    sprintf(filename, FS_PID_STAT, pid);
+    pfile = fopen(filename, "r");
+    while (fgets(line, sizeof(line), pfile) != NULL)
+    {
+        zlog_debug(zc, "strlen(line) %d\r\n", strlen(line));
+        zlog_debug(zc, "line ->%s\r\n", line);
+        for (u32 i = 0; i < strlen(line); i++)
+        {
+            if (line[i] == ' ')
+                pid_items++;
+            if (pid_items == 13 && stat->pid_utime == 0)
+            {
+                //zlog_debug(zc, "line %s\r\n", line + i);
+                sscanf(line + i, "%llu", &stat->pid_utime);
+            }
+            if (pid_items == 14 && stat->pid_stime == 0)
+            {
+                //zlog_debug(zc, "line %s\r\n", line + i);
+                sscanf(line + i, "%llu", &stat->pid_stime);
+            }
+            if (pid_items == 15 && stat->pid_cutime == 0)
+                sscanf(line + i, "%llu", &stat->pid_cutime);
+            if (pid_items == 16 && stat->pid_cstime == 0)
+                sscanf(line + i, "%llu", &stat->pid_cstime);
+            if (pid_items == 23 && stat->pid_rss == 0)
+            {
+                zlog_debug(zc, "line %s\r\n", line + i);
+                sscanf(line + i, "%llu", &stat->pid_rss);
+            }
+        }
+    }
+
+    fclose(pfile);
 }
 
 /**
@@ -102,7 +139,7 @@ void cpu_stat_update(u32 pid, struct smm_cpu_mem_stat *stat, struct smm_contrl *
  * @param type 类型
  * @param data 
  */
-void cpu_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
+void cpu_ratio(u32 pid, struct smm_contrl *contrl, int index, void *data)
 {
     u64 total_pre, total_cur;
     u32 cpu_idle, total;
@@ -132,7 +169,7 @@ void cpu_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
  * @param type 类型
  * @param data 
  */
-void cpu_usr_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
+void cpu_usr_ratio(u32 pid, struct smm_contrl *contrl, int index, void *data)
 {
     u64 total_pre, total_cur;
     u32 usr, total;
@@ -161,7 +198,7 @@ void cpu_usr_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
  * @param type 类型
  * @param data 
  */
-void cpu_kernel_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
+void cpu_kernel_ratio(u32 pid, struct smm_contrl *contrl, int index, void *data)
 {
     u64 total_pre, total_cur;
     u32 cpu_kernel, total;
@@ -190,7 +227,7 @@ void cpu_kernel_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
  * @param type 类型
  * @param data 
  */
-void cpu_si_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
+void cpu_si_ratio(u32 pid, struct smm_contrl *contrl, int index, void *data)
 {
     u64 total_pre, total_cur;
     u32 si, total;
@@ -219,7 +256,7 @@ void cpu_si_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
  * @param type 类型
  * @param data 
  */
-void mem_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
+void mem_ratio(u32 pid, struct smm_contrl *contrl, int index, void *data)
 {
     u64 mem_idle, total;
     double mem_ratio;
@@ -244,7 +281,7 @@ void mem_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
  * @param type 类型
  * @param data 
  */
-void mem_cache(u32 pid, struct smm_contrl *contrl, int type, void *data)
+void mem_cache(u32 pid, struct smm_contrl *contrl, int index, void *data)
 {
     u32 cache;
     double mem_cache;
@@ -267,7 +304,7 @@ void mem_cache(u32 pid, struct smm_contrl *contrl, int type, void *data)
  * @param type 类型
  * @param data 
  */
-void mem_buffer(u32 pid, struct smm_contrl *contrl, int type, void *data)
+void mem_buffer(u32 pid, struct smm_contrl *contrl, int index, void *data)
 {
     u32 buffer;
     double mem_buffer;
@@ -290,22 +327,81 @@ void mem_buffer(u32 pid, struct smm_contrl *contrl, int type, void *data)
  * @param type 类型
  * @param data 
  */
-void pid_cpu_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
+void pid_cpu_ratio(u32 pid, struct smm_contrl *contrl, int index, void *data)
 {
+    u64 total_pre, total_cur;
+    u64 pid_pre, pid_cur;
+    double cpu_pid_ratio;
+    struct smm_cpu_mem_stat *stat_pre = (struct smm_cpu_mem_stat *)data;
+    struct smm_cpu_mem_stat *stat_cur = stat_pre + 1;
+
+    total_pre = total_stat(stat_pre);
+
+    total_cur = total_stat(stat_cur);
+
+    pid_pre = stat_pre->pid_cstime + stat_pre->pid_cutime + stat_pre->pid_stime + stat_pre->pid_utime;
+    pid_cur = stat_cur->pid_cstime + stat_cur->pid_cutime + stat_cur->pid_stime + stat_cur->pid_utime;
+
+    cpu_pid_ratio = 100.f * (pid_cur - pid_pre) / (total_cur - total_pre);
+    zlog_debug(zc, "pid_cpu_ratio is %.2f \r\n", cpu_pid_ratio);
+    contrl->pid_result[index].r_pid_cpu_ratio = cpu_pid_ratio;
 }
 
 /**
- * @brief 指定进程运行的CPU号
+ * @brief 
  * 
  * @param pid pid
  * @param contrl 控制消息数据结构
  * @param type 类型
  * @param data 
  */
-void pid_cpu_index(u32 pid, struct smm_contrl *contrl, int type, void *data)
+void pid_cpu_usr_ratio(u32 pid, struct smm_contrl *contrl, int index, void *data)
 {
+    u64 total_pre, total_cur;
+    u64 pid_pre, pid_cur;
+    double cpu_pid_usr_ratio;
+    struct smm_cpu_mem_stat *stat_pre = (struct smm_cpu_mem_stat *)data;
+    struct smm_cpu_mem_stat *stat_cur = stat_pre + 1;
+
+    total_pre = total_stat(stat_pre);
+
+    total_cur = total_stat(stat_cur);
+
+    pid_pre = stat_pre->pid_utime;
+    pid_cur = stat_cur->pid_utime;
+
+    cpu_pid_usr_ratio = 100.f * (pid_cur - pid_pre) / (total_cur - total_pre);
+    zlog_debug(zc, "cpu_pid_usr_ratio is %.2f \r\n", cpu_pid_usr_ratio);
+    contrl->pid_result[index].r_pid_cpu_usr_ratio = cpu_pid_usr_ratio;
 }
 
+/**
+ * @brief 
+ * 
+ * @param pid pid
+ * @param contrl 控制消息数据结构
+ * @param type 类型
+ * @param data 
+ */
+void pid_cpu_kernel_ratio(u32 pid, struct smm_contrl *contrl, int index, void *data)
+{
+    u64 total_pre, total_cur;
+    u64 pid_pre, pid_cur;
+    double cpu_pid_sys_ratio;
+    struct smm_cpu_mem_stat *stat_pre = (struct smm_cpu_mem_stat *)data;
+    struct smm_cpu_mem_stat *stat_cur = stat_pre + 1;
+
+    total_pre = total_stat(stat_pre);
+
+    total_cur = total_stat(stat_cur);
+
+    pid_pre = stat_pre->pid_stime;
+    pid_cur = stat_cur->pid_stime;
+
+    cpu_pid_sys_ratio = 100.f * (pid_cur - pid_pre) / (total_cur - total_pre);
+    zlog_debug(zc, "cpu_pid_sys_ratio is %.2f \r\n", cpu_pid_sys_ratio);
+    contrl->pid_result[index].r_pid_cpu_sys_ratio = cpu_pid_sys_ratio;
+}
 /**
  * @brief 进程内存使用率
  * 
@@ -314,81 +410,44 @@ void pid_cpu_index(u32 pid, struct smm_contrl *contrl, int type, void *data)
  * @param type 类型
  * @param data 
  */
-void pid_mem_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
+unsigned int kb_shift;
+void get_kb_shift(void)
 {
+    int shift = 0;
+    long size;
+
+    /* One can also use getpagesize() to get the size of a page */
+    if ((size = sysconf(_SC_PAGESIZE)) == -1)
+    {
+        perror("sysconf");
+    }
+
+    size >>= 10; /* Assume that a page has a minimum size of 1 kB */
+
+    while (size > 1)
+    {
+        shift++;
+        size >>= 1;
+    }
+
+    kb_shift = (unsigned int)shift;
+}
+void pid_mem_ratio(u32 pid, struct smm_contrl *contrl, int index, void *data)
+{
+    u64 rss, total;
+    double pid_rss_ratio;
+    struct smm_cpu_mem_stat *stat_pre = (struct smm_cpu_mem_stat *)data;
+    struct smm_cpu_mem_stat *stat_cur = stat_pre + 1;
+
+    rss = stat_pre->pid_rss + stat_cur->pid_rss;
+    total = stat_pre->mem_total + stat_cur->mem_total;
+
+    get_kb_shift();
+    pid_rss_ratio = 100.f * (PG_TO_KB(rss)) / total;
+    zlog_debug(zc, "pid_rss_ratio is %.2f \r\n", pid_rss_ratio);
+    contrl->pid_result[index].r_pid_mem_ratio = pid_rss_ratio;
 }
 
-/**
- * @brief 进程物理内存使用率
- * 
- * @param pid pid
- * @param contrl 控制消息数据结构
- * @param type 类型
- * @param data 
- */
-void pid_mem_rss(u32 pid, struct smm_contrl *contrl, int type, void *data)
-{
-}
-
-/**
- * @brief 进程虚拟内存使用率
- * 
- * @param pid pid
- * @param contrl 控制消息数据结构
- * @param type 类型
- * @param data 
- */
-void pid_mem_vir(u32 pid, struct smm_contrl *contrl, int type, void *data)
-{
-}
-
-/**
- * @brief 进程io读速率
- * 
- * @param pid pid
- * @param contrl 控制消息数据结构
- * @param type 类型
- * @param data 
- */
-void pid_io_rd_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
-{
-}
-
-/**
- * @brief 进程io写效率
- * 
- * @param pid pid
- * @param contrl 控制消息数据结构
- * @param type 类型
- * @param data 
- */
-void pid_io_wr_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
-{
-}
-
-/**
- * @brief 进程网络发送速率
- * 
- * @param pid pid
- * @param contrl 控制消息数据结构
- * @param type 类型
- * @param data 
- */
-void pid_net_sd_rate(u32 pid, struct smm_contrl *contrl, int type, void *data)
-{
-}
-
-/**
- * @brief 进程网络接收速率
- * 
- * @param pid pid
- * @param contrl 控制消息数据结构
- * @param type 类型
- * @param data 
- */
-void pid_net_rc_rate(u32 pid, struct smm_contrl *contrl, int type, void *data)
-{
-}
 /**
  * @brief smm的结果处理
  * 
@@ -396,7 +455,7 @@ void pid_net_rc_rate(u32 pid, struct smm_contrl *contrl, int type, void *data)
  */
 void smm_deal_result(struct smm_contrl *contrl)
 {
-    zlog_debug(zc, "smm_deal_result weight times %d\r\n",contrl->result.weight_times);
+    zlog_debug(zc, "smm_deal_result weight times %d\r\n", contrl->result.weight_times);
     smm_deal(zc, contrl->dealmode, "%%CPU(s)  %5.2f%% use %5.2f%% usr %5.2f%% sys %5.2f%% si",
              contrl->result.r_cpu_ratio / contrl->result.weight_times,
              contrl->result.r_cpu_usr_ratio / contrl->result.weight_times,
@@ -406,4 +465,13 @@ void smm_deal_result(struct smm_contrl *contrl)
              contrl->result.r_mem_ratio / contrl->result.weight_times,
              contrl->result.r_mem_buffer / contrl->result.weight_times,
              contrl->result.r_mem_cache / contrl->result.weight_times);
+    for (int pid_index = 0; pid_index < contrl->pidnum; pid_index++)
+    {
+        smm_deal(zc, contrl->dealmode, "PID:%s (%d) ", contrl->pid_name[pid_index].name, contrl->smm_pid[pid_index]);
+        smm_deal(zc, contrl->dealmode, "CPU(s)  %5.2f%% use %5.2f%% usr %5.2f%% sys ",
+                 contrl->pid_result[pid_index].r_pid_cpu_ratio, contrl->pid_result[pid_index].r_pid_cpu_usr_ratio,
+                 contrl->pid_result[pid_index].r_pid_cpu_sys_ratio);
+        smm_deal(zc, contrl->dealmode, "MEM %5.2f%%", contrl->pid_result[pid_index].r_pid_mem_ratio);
+    }
+    //fflush(stdout);
 }

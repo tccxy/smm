@@ -47,14 +47,9 @@ struct smm_dealentity entry_register[] =
         {SMM_M_END, NULL},
 
         {PID_CPU_RATIO, pid_cpu_ratio},
-        {PID_CPU_INDEX, pid_cpu_index},
+        {PID_CPU_USR_RATIO, pid_cpu_usr_ratio},
+        {PID_CPU_KERNEL_RATIO, pid_cpu_kernel_ratio},
         {PID_MEM_RATIO, pid_mem_ratio},
-        {PID_MEM_RSS, pid_mem_rss},
-        {PID_MEM_VIR, pid_mem_vir},
-        {PID_IO_RD_RATE, pid_io_rd_ratio},
-        {PID_IO_WR_RATE, pid_io_wr_ratio},
-        {PID_NET_SD_RATE, pid_net_sd_rate},
-        {PID_NET_RC_RATE, pid_net_rc_rate},
 };
 
 /**
@@ -145,6 +140,7 @@ u32 smm_parse_pid_data(struct smm_contrl *contrl, u8 *arg)
         {
             contrl->pidnum++;
             contrl->smm_pid[i] = pid;
+            memcpy(contrl->pid_name[i].name, pid_msg.pid_name[i].name, strlen(pid_msg.pid_name[i].name));
         }
         zlog_debug(zc, "pid_msg.pid_name %s pid %d \r\n ", pid_msg.pid_name[i].name, pid);
     }
@@ -232,12 +228,12 @@ void monitor_task(void *arg)
     struct smm_contrl *contrl = (struct smm_contrl *)arg;
     u8 index = 0, pid_index = 0;
     u32 pid;
-    struct smm_cpu_mem_stat cpu_stat[2];
-    struct smm_pid_stat pid_stat[2]; //存放两个相近时刻的状态，用作计算
+    struct smm_cpu_mem_stat cpu_stat[2] = {0}; //存放两个相近时刻的状态，用作计算
 
     zlog_debug(zc, "monitor_task in pidnum %d \r\n", contrl->pidnum);
 
     /*系统级监控*/
+    memset((void *)cpu_stat, 0, sizeof(cpu_stat));
     cpu_stat_update(0, cpu_stat, contrl);
 
     for (index = CPU_RATIO; index < SMM_M_END; index++)
@@ -249,11 +245,12 @@ void monitor_task(void *arg)
     for (pid_index = 0; pid_index < contrl->pidnum; pid_index++)
     {
         pid = contrl->smm_pid[pid_index];
-        cpu_stat_update(pid, pid_stat, contrl);
+        memset((void *)cpu_stat, 0, sizeof(cpu_stat));
+        cpu_stat_update(pid, cpu_stat, contrl);
         for (index = CPU_RATIO; index < SMM_PID_M_END; index++)
         {
             if (NULL != entry_register[index].p_dealfun)
-                entry_register[index].p_dealfun(pid, contrl, index, (void *)pid_stat);
+                entry_register[index].p_dealfun(pid, contrl, pid_index, (void *)cpu_stat);
         }
     }
 
@@ -291,11 +288,11 @@ int main(int argc, char *argv[])
 
     while ((opt = getopt_long_only(argc, argv, string, long_options, &option_index)) != -1)
     {
-        printf("opt = %c\t\t", opt);
-        printf("optarg = %s\t\t", optarg);
-        printf("optind = %d\t\t", optind);
-        printf("argv[optind] =%s\t\t", argv[optind]);
-        printf("option_index = %d\n", option_index);
+        //printf("opt = %c\t\t", opt);
+        //printf("optarg = %s\t\t", optarg);
+        //printf("optind = %d\t\t", optind);
+        //printf("argv[optind] =%s\t\t", argv[optind]);
+        //printf("option_index = %d\n", option_index);
         switch (opt)
         {
         case 'l':
@@ -317,6 +314,7 @@ int main(int argc, char *argv[])
     {
         ms_sleep(g_smm_contrl.interval);
         memset((void *)&g_smm_contrl.result, 0, sizeof(g_smm_contrl.result));
+        memset((void *)&g_smm_contrl.pid_result, 0, sizeof(g_smm_contrl.pid_result));
         monitor_task((void *)&g_smm_contrl);
     }
     zlog_fini();
