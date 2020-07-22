@@ -65,11 +65,19 @@ static u32 cpu_stat_get(struct smm_cpu_mem_stat *stat)
 }
 
 /**
+ * @brief 获取pid的状态信息
+ * 
+ */
+void pid_stat_get(u32 pid, struct smm_pid_stat *stat)
+{
+}
+
+/**
  * @brief 更新CPU 信息
  * 
  * @param stat 状态信息
  */
-void cpu_stat_update(struct smm_cpu_mem_stat *stat)
+void cpu_stat_update(u32 pid, struct smm_cpu_mem_stat *stat, struct smm_contrl *contrl)
 {
     struct smm_cpu_mem_stat *stat_pre = NULL;
     struct smm_cpu_mem_stat *stat_cur = NULL;
@@ -78,8 +86,13 @@ void cpu_stat_update(struct smm_cpu_mem_stat *stat)
     stat_cur = stat_pre + 1;
 
     cpu_stat_get(stat_pre);
+    if (pid != 0)
+        pid_stat_get(pid, stat_pre);
     usleep(SAMPLE_MS * 1000);
+    if (pid != 0)
+        pid_stat_get(pid, stat_cur);
     cpu_stat_get(stat_cur);
+    contrl->result.weight_times++; //加权次数加一
 }
 /**
  * @brief cpu利用率
@@ -93,6 +106,7 @@ void cpu_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
 {
     u64 total_pre, total_cur;
     u32 cpu_idle, total;
+    double cpu_ratio;
     struct smm_cpu_mem_stat *stat_pre = (struct smm_cpu_mem_stat *)data;
     struct smm_cpu_mem_stat *stat_cur = stat_pre + 1;
 
@@ -105,9 +119,9 @@ void cpu_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
     cpu_idle = stat_cur->cpu_idle - stat_pre->cpu_idle;
 
     zlog_debug(zc, "total %d  cpu_idle %d\r\n", total, cpu_idle);
-    contrl->result.r_cpu_ratio = 100.f * (total - cpu_idle) / total;
-    zlog_debug(zc, "contrl->result.r_cpu_ratio is %.2f \r\n",
-               contrl->result.r_cpu_ratio);
+    cpu_ratio = 100.f * (total - cpu_idle) / total;
+    contrl->result.r_cpu_ratio += cpu_ratio;
+    zlog_debug(zc, "cpu_ratio is %.2f \r\n", cpu_ratio);
 }
 
 /**
@@ -122,6 +136,7 @@ void cpu_usr_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
 {
     u64 total_pre, total_cur;
     u32 usr, total;
+    double cpu_usr_ratio;
     struct smm_cpu_mem_stat *stat_pre = (struct smm_cpu_mem_stat *)data;
     struct smm_cpu_mem_stat *stat_cur = stat_pre + 1;
 
@@ -133,9 +148,9 @@ void cpu_usr_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
     usr = stat_cur->cpu_user - stat_pre->cpu_user;
 
     zlog_debug(zc, "total %d  usr %d\r\n", total, usr);
-    contrl->result.r_cpu_usr_ratio = 100.f * (usr) / total;
-    zlog_debug(zc, "contrl->result.r_cpu_usr_ratio is %.2f \r\n",
-               contrl->result.r_cpu_usr_ratio);
+    cpu_usr_ratio = 100.f * (usr) / total;
+    contrl->result.r_cpu_usr_ratio += cpu_usr_ratio;
+    zlog_debug(zc, "cpu_usr_ratio is %.2f \r\n", cpu_usr_ratio);
 }
 
 /**
@@ -150,6 +165,7 @@ void cpu_kernel_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
 {
     u64 total_pre, total_cur;
     u32 cpu_kernel, total;
+    double cpu_kernel_ratio;
     struct smm_cpu_mem_stat *stat_pre = (struct smm_cpu_mem_stat *)data;
     struct smm_cpu_mem_stat *stat_cur = stat_pre + 1;
 
@@ -161,9 +177,9 @@ void cpu_kernel_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
     cpu_kernel = stat_cur->cpu_kernel - stat_pre->cpu_kernel;
 
     zlog_debug(zc, "total %d  cpu_kernel %d\r\n", total, cpu_kernel);
-    contrl->result.r_cpu_kernel_ratio = 100.f * (cpu_kernel) / total;
-    zlog_debug(zc, "contrl->result.r_cpu_kernel_ratio is %.2f \r\n",
-               contrl->result.r_cpu_kernel_ratio);
+    cpu_kernel_ratio = 100.f * (cpu_kernel) / total;
+    contrl->result.r_cpu_kernel_ratio += cpu_kernel_ratio;
+    zlog_debug(zc, "cpu_kernel_ratio is %.2f \r\n", cpu_kernel_ratio);
 }
 
 /**
@@ -178,6 +194,7 @@ void cpu_si_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
 {
     u64 total_pre, total_cur;
     u32 si, total;
+    double cpu_si_ratio;
     struct smm_cpu_mem_stat *stat_pre = (struct smm_cpu_mem_stat *)data;
     struct smm_cpu_mem_stat *stat_cur = stat_pre + 1;
 
@@ -189,9 +206,9 @@ void cpu_si_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
     si = stat_cur->cpu_softirq - stat_pre->cpu_softirq;
 
     zlog_debug(zc, "total %d  si %d\r\n", total, si);
-    contrl->result.r_cpu_si_ratio = 100.f * (si) / total;
-    zlog_debug(zc, "contrl->result.r_cpu_si_ratio is %.2f \r\n",
-               contrl->result.r_cpu_si_ratio);
+    cpu_si_ratio = 100.f * (si) / total;
+    contrl->result.r_cpu_si_ratio += cpu_si_ratio;
+    zlog_debug(zc, "cpu_si_ratio is %.2f \r\n", cpu_si_ratio);
 }
 
 /**
@@ -205,6 +222,7 @@ void cpu_si_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
 void mem_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
 {
     u64 mem_idle, total;
+    double mem_ratio;
     struct smm_cpu_mem_stat *stat_pre = (struct smm_cpu_mem_stat *)data;
     struct smm_cpu_mem_stat *stat_cur = stat_pre + 1;
 
@@ -213,9 +231,9 @@ void mem_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
     total = stat_pre->mem_total + stat_cur->mem_total;
 
     zlog_debug(zc, "mem_idle %llu  total %llu\r\n", mem_idle, total);
-    contrl->result.r_mem_ratio = 100.f - (mem_idle * 100.f) / total;
-    zlog_debug(zc, "contrl->result.r_mem_ratio is %.2f \r\n",
-               contrl->result.r_mem_ratio);
+    mem_ratio = 100.f - (mem_idle * 100.f) / total;
+    contrl->result.r_mem_ratio += mem_ratio;
+    zlog_debug(zc, "mem_ratio is %.2f \r\n", mem_ratio);
 }
 
 /**
@@ -229,15 +247,16 @@ void mem_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data)
 void mem_cache(u32 pid, struct smm_contrl *contrl, int type, void *data)
 {
     u32 cache;
+    double mem_cache;
     struct smm_cpu_mem_stat *stat_pre = (struct smm_cpu_mem_stat *)data;
     struct smm_cpu_mem_stat *stat_cur = stat_pre + 1;
 
     cache = (stat_pre->mem_cache + stat_cur->mem_cache) / 2;
 
     zlog_debug(zc, "cache %llu \r\n", cache);
-    contrl->result.r_mem_cache = cache / 1024.f;
-    zlog_debug(zc, "contrl->result.r_mem_cache is %.2f \r\n",
-               contrl->result.r_mem_cache);
+    mem_cache = cache / 1024.f;
+    contrl->result.r_mem_cache += mem_cache;
+    zlog_debug(zc, "mem_cache is %.2f \r\n", mem_cache);
 }
 
 /**
@@ -251,24 +270,18 @@ void mem_cache(u32 pid, struct smm_contrl *contrl, int type, void *data)
 void mem_buffer(u32 pid, struct smm_contrl *contrl, int type, void *data)
 {
     u32 buffer;
+    double mem_buffer;
     struct smm_cpu_mem_stat *stat_pre = (struct smm_cpu_mem_stat *)data;
     struct smm_cpu_mem_stat *stat_cur = stat_pre + 1;
 
     buffer = (stat_pre->mem_buffer + stat_cur->mem_buffer) / 2;
 
     zlog_debug(zc, "buffer %llu \r\n", buffer);
-    contrl->result.r_mem_buffer = buffer / 1024.f;
-    zlog_debug(zc, "contrl->result.r_mem_buffer is %.2f \r\n",
-               contrl->result.r_mem_buffer);
+    mem_buffer = buffer / 1024.f;
+    contrl->result.r_mem_buffer += mem_buffer;
+    zlog_debug(zc, "mem_buffer is %.2f \r\n", mem_buffer);
 }
 
-/**
- * @brief 更新pid的状态信息
- * 
- */
-void pid_stat_updata(u32 pid, struct smm_pid_stat *stat)
-{
-}
 /**
  * @brief 指定进程的cpu利用率
  * 
@@ -383,9 +396,14 @@ void pid_net_rc_rate(u32 pid, struct smm_contrl *contrl, int type, void *data)
  */
 void smm_deal_result(struct smm_contrl *contrl)
 {
+    zlog_debug(zc, "smm_deal_result weight times %d\r\n",contrl->result.weight_times);
     smm_deal(zc, contrl->dealmode, "%%CPU(s)  %5.2f%% use %5.2f%% usr %5.2f%% sys %5.2f%% si",
-             contrl->result.r_cpu_ratio, contrl->result.r_cpu_usr_ratio,
-             contrl->result.r_cpu_kernel_ratio, contrl->result.r_cpu_si_ratio);
+             contrl->result.r_cpu_ratio / contrl->result.weight_times,
+             contrl->result.r_cpu_usr_ratio / contrl->result.weight_times,
+             contrl->result.r_cpu_kernel_ratio / contrl->result.weight_times,
+             contrl->result.r_cpu_si_ratio / contrl->result.weight_times);
     smm_deal(zc, contrl->dealmode, "%%MEM(MB) %5.2f%% use %.2f/%.2f buff/cache ",
-             contrl->result.r_mem_ratio, contrl->result.r_mem_buffer, contrl->result.r_mem_cache);
+             contrl->result.r_mem_ratio / contrl->result.weight_times,
+             contrl->result.r_mem_buffer / contrl->result.weight_times,
+             contrl->result.r_mem_cache / contrl->result.weight_times);
 }

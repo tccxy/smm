@@ -39,7 +39,6 @@ struct smm_cpu_mem_stat
     u32 mem_sreclaimable;
 };
 
-
 /**
  * @brief 进程状态信息
  * 
@@ -48,11 +47,11 @@ struct smm_pid_stat
 {
 };
 
-#define total_stat(stat)                                                 \
+#define total_stat(stat)                                                  \
     stat->cpu_user + stat->cpu_nice + stat->cpu_kernel + stat->cpu_idle + \
-    stat->cpu_iowait + stat->cpu_irq + stat->cpu_softirq + stat->cpu_stealstolen
+        stat->cpu_iowait + stat->cpu_irq + stat->cpu_softirq + stat->cpu_stealstolen
 
-void cpu_stat_update(struct smm_cpu_mem_stat *stat);
+void cpu_stat_update(u32 pid, struct smm_cpu_mem_stat *stat, struct smm_contrl *contrl);
 void cpu_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data);
 void cpu_usr_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data);
 void cpu_kernel_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data);
@@ -60,7 +59,7 @@ void cpu_si_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data);
 void mem_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data);
 void mem_cache(u32 pid, struct smm_contrl *contrl, int type, void *data);
 void mem_buffer(u32 pid, struct smm_contrl *contrl, int type, void *data);
-void pid_stat_updata(u32 pid, struct smm_pid_stat *stat);
+//void pid_stat_updata(u32 pid, struct smm_pid_stat *stat);
 void pid_cpu_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data);
 void pid_cpu_index(u32 pid, struct smm_contrl *contrl, int type, void *data);
 void pid_mem_ratio(u32 pid, struct smm_contrl *contrl, int type, void *data);

@@ -235,10 +235,11 @@ void monitor_task(void *arg)
     struct smm_cpu_mem_stat cpu_stat[2];
     struct smm_pid_stat pid_stat[2]; //存放两个相近时刻的状态，用作计算
 
-    zlog_debug(zc, "monitor_task in\r\n");
+    zlog_debug(zc, "monitor_task in pidnum %d \r\n", contrl->pidnum);
 
     /*系统级监控*/
-    cpu_stat_update(cpu_stat);
+    cpu_stat_update(0, cpu_stat, contrl);
+
     for (index = CPU_RATIO; index < SMM_M_END; index++)
     {
         entry_register[index].p_dealfun(0, contrl, index, (void *)cpu_stat);
@@ -248,10 +249,11 @@ void monitor_task(void *arg)
     for (pid_index = 0; pid_index < contrl->pidnum; pid_index++)
     {
         pid = contrl->smm_pid[pid_index];
-        pid_stat_updata(pid, pid_stat);
-        for (index = PID_CPU_RATIO; index < SMM_PID_M_END; index++)
+        cpu_stat_update(pid, pid_stat, contrl);
+        for (index = CPU_RATIO; index < SMM_PID_M_END; index++)
         {
-            entry_register[index].p_dealfun(pid, contrl, index, (void *)pid_stat);
+            if (NULL != entry_register[index].p_dealfun)
+                entry_register[index].p_dealfun(pid, contrl, index, (void *)pid_stat);
         }
     }
 
@@ -314,6 +316,7 @@ int main(int argc, char *argv[])
     while (1)
     {
         ms_sleep(g_smm_contrl.interval);
+        memset((void *)&g_smm_contrl.result, 0, sizeof(g_smm_contrl.result));
         monitor_task((void *)&g_smm_contrl);
     }
     zlog_fini();

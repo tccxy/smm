@@ -52,6 +52,7 @@ struct smm_pid_msg
  */
 struct smm_result
 {
+    u32 weight_times;//加权次数
     double r_cpu_ratio;
     double r_cpu_usr_ratio;
     double r_cpu_kernel_ratio;
