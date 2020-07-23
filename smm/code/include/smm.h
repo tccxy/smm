@@ -17,9 +17,9 @@
     zlog(cat, __FILE__, sizeof(__FILE__) - 1, __func__, sizeof(__func__) - 1, __LINE__, \
          dealmode, format, ##args)
 
-//display的模式会同时记录log
-#define DISPLAY_MODE ZLOG_LEVEL_NOTICE //使用zlog的notice模式
-#define LOG_MODE ZLOG_LEVEL_INFO       //使用zlog的info模式
+
+#define DISPLAY_MODE 0 //使用打印模式
+#define LOG_MODE 1       //使用zlog的info模式
 
 #define MAX_PID_NUM 128
 #define PID_NAME_MAX_LEN 32   //进程名字最大长度

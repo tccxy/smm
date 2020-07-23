@@ -37,4 +37,17 @@ pid_2的cpu及内存的占用率对应的总值为t2-t3
 t0-t1 t1-t2 t2-t3的三次平均的结果，
 
 
+```bash
+smm_v1.0 
+         
+ Usage   :         
+    smm [options] -t <Monitoring period> -p {[app_name1];[name2];..}        
+    options        
+        -h,--help                          get app help        
+        -d,--display                       display monitoring results        
+        -l,--log                           record monitoring results use zlog 
+```
 
+记录的日志采用markdown的格式，需要自己添加一个头即可形成表格的形式。
+通过下面的网址，可以很方便的转换成多种形式的表格进行数据分析。
+https://tableconvert.com

@@ -455,23 +455,59 @@ void pid_mem_ratio(u32 pid, struct smm_contrl *contrl, int index, void *data)
  */
 void smm_deal_result(struct smm_contrl *contrl)
 {
+    u8 pid_index = 0;
+    u8 info[4096] = {0};
+    u32 info_len = 0;
     zlog_debug(zc, "smm_deal_result weight times %d\r\n", contrl->result.weight_times);
-    smm_deal(zc, contrl->dealmode, "%%CPU(s)  %5.2f%% use %5.2f%% usr %5.2f%% sys %5.2f%% si",
-             contrl->result.r_cpu_ratio / contrl->result.weight_times,
-             contrl->result.r_cpu_usr_ratio / contrl->result.weight_times,
-             contrl->result.r_cpu_kernel_ratio / contrl->result.weight_times,
-             contrl->result.r_cpu_si_ratio / contrl->result.weight_times);
-    smm_deal(zc, contrl->dealmode, "%%MEM(MB) %5.2f%% use %.2f/%.2f buff/cache ",
-             contrl->result.r_mem_ratio / contrl->result.weight_times,
-             contrl->result.r_mem_buffer / contrl->result.weight_times,
-             contrl->result.r_mem_cache / contrl->result.weight_times);
-    for (int pid_index = 0; pid_index < contrl->pidnum; pid_index++)
+    if (contrl->dealmode == DISPLAY_MODE)
     {
-        smm_deal(zc, contrl->dealmode, "PID:%s (%d) ", contrl->pid_name[pid_index].name, contrl->smm_pid[pid_index]);
-        smm_deal(zc, contrl->dealmode, "CPU(s)  %5.2f%% use %5.2f%% usr %5.2f%% sys ",
-                 contrl->pid_result[pid_index].r_pid_cpu_ratio, contrl->pid_result[pid_index].r_pid_cpu_usr_ratio,
-                 contrl->pid_result[pid_index].r_pid_cpu_sys_ratio);
-        smm_deal(zc, contrl->dealmode, "MEM %5.2f%%", contrl->pid_result[pid_index].r_pid_mem_ratio);
+        printf("%%CPU(s)  %5.2f%% use %5.2f%% usr %5.2f%% sys %5.2f%% si \r\n",
+               contrl->result.r_cpu_ratio / contrl->result.weight_times,
+               contrl->result.r_cpu_usr_ratio / contrl->result.weight_times,
+               contrl->result.r_cpu_kernel_ratio / contrl->result.weight_times,
+               contrl->result.r_cpu_si_ratio / contrl->result.weight_times);
+        printf("%%MEM(MB) %5.2f%% use %.2f/%.2f buff/cache \r\n",
+               contrl->result.r_mem_ratio / contrl->result.weight_times,
+               contrl->result.r_mem_buffer / contrl->result.weight_times,
+               contrl->result.r_mem_cache / contrl->result.weight_times);
+        for (pid_index = 0; pid_index < contrl->pidnum; pid_index++)
+        {
+            printf("PID:%s (%d) \r\n", contrl->pid_name[pid_index].name, contrl->smm_pid[pid_index]);
+            printf("CPU(s)  %5.2f%% use %5.2f%% usr %5.2f%% sys \r\n",
+                   contrl->pid_result[pid_index].r_pid_cpu_ratio, contrl->pid_result[pid_index].r_pid_cpu_usr_ratio,
+                   contrl->pid_result[pid_index].r_pid_cpu_sys_ratio);
+            printf("MEM %5.2f%%\r\n", contrl->pid_result[pid_index].r_pid_mem_ratio);
+        }
+        for (pid_index = 0; pid_index < (contrl->pidnum * 3) + 2; pid_index++)
+        {
+            printf("\033[1A"); //光标上移
+        }
+        fflush(stdout);
     }
-    //fflush(stdout);
+    //以md的格式进行记录
+    sprintf(info, "|%%CPU(s)| %5.2f%% |use |%5.2f%% |usr |%5.2f%% |sys |%5.2f%% |si"
+                  "|%%MEM(MB)| %5.2f%% |use |%.2f/%.2f |buff/cache ",
+            contrl->result.r_cpu_ratio / contrl->result.weight_times,
+            contrl->result.r_cpu_usr_ratio / contrl->result.weight_times,
+            contrl->result.r_cpu_kernel_ratio / contrl->result.weight_times,
+            contrl->result.r_cpu_si_ratio / contrl->result.weight_times,
+            contrl->result.r_mem_ratio / contrl->result.weight_times,
+            contrl->result.r_mem_buffer / contrl->result.weight_times,
+            contrl->result.r_mem_cache / contrl->result.weight_times);
+
+    for (pid_index = 0; pid_index < contrl->pidnum; pid_index++)
+    {
+        info_len = strlen(info);
+        sprintf(&info[info_len], "|PID:%s (%d)"
+                                 "|CPU(s) | %5.2f%% |use |%5.2f%% |usr |%5.2f%% |sys "
+                                 "|MEM |%5.2f%%",
+                contrl->pid_name[pid_index].name, contrl->smm_pid[pid_index],
+                contrl->pid_result[pid_index].r_pid_cpu_ratio,
+                contrl->pid_result[pid_index].r_pid_cpu_usr_ratio,
+                contrl->pid_result[pid_index].r_pid_cpu_sys_ratio,
+                contrl->pid_result[pid_index].r_pid_mem_ratio);
+    }
+    info_len = strlen(info);
+    sprintf(&info[info_len], "|");
+    zlog_info(zc, "%s ", info);
 }
