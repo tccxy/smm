@@ -41,14 +41,49 @@ t0-t1 t1-t2 t2-t3的三次平均的结果，
 smm_v1.0 
          
  Usage   :         
-    smm [options] -t <Monitoring period> -p {[app_name1];[name2];..}        
+    smm [options] -t <Monitoring period> -p {[app_name1]:[name2]:..}        
     options        
         -h,--help                          get app help        
         -d,--display                       display monitoring results        
         -l,--log                           record monitoring results use zlog 
 ```
+```
+eg:
+sudo ./smm -d -t 1000 -p sshd:stress:vsftpd
+%CPU(s)  46.23% use 37.73% usr  5.39% sys  3.11% si 
+%MEM(MB) 21.08% use 77.36/488.94 buff/cache 
+PID:sshd (15402) 
+CPU(s)   0.00% use  0.00% usr  0.00% sys 
+MEM  0.19%
+PID:stress (31765) 
+CPU(s)  25.64% use 25.64% usr  0.00% sys 
+MEM 15.03%
+PID:vsftpd (3825) 
+CPU(s)   0.00% use  0.00% usr  0.00% sys 
+MEM  0.10%
+```
 
+其他：
+-t 指定监控的时间间隔
+-p 可以指定监控的进程名字，以：进行分割，最多支持128个进程的监控
+默认为记录log的模式进行工作，如需实时显示，需-d参数
+zlog的形式可以自行更改，默认采用的是常监控记录为smm.info
 
-记录的日志采用markdown的格式，需要自己添加一个头即可形成表格的形式。
-通过下面的网址，可以很方便的转换成多种形式的表格进行数据分析。
+如下
+只要在最上面加上markdown的头就可以转化为表格了
+通过下面的网址，可以很方便的转换成多种形式的表格（如 excel）进行数据分析。
 https://tableconvert.com
+```
+|%CPU(s)| 42.27% |use |34.32% |usr | 5.03% |sys | 2.93% |si|%MEM(MB)| 21.13% |use |77.34/492.33 |buff/cache |PID:IV_Fusion (4216)|CPU(s) | 12.71% |use |11.86% |usr | 0.85% |sys |MEM | 1.07%|PID:can_sensorparse (4155)|CPU(s) |  0.00% |use | 0.00% |usr | 0.00% |sys |MEM | 0.19%|PID:stress (25496)|CPU(s) | 23.77% |use |20.49% |usr | 3.28% |sys |MEM |15.03%| 
+```
+如果某一进程异常退出了，如stress进程退出后会记录为如下，这样做是为了在做图标分析时，”列“是对齐的
+```
+|%CPU(s)| 17.50% |use |10.46% |usr | 4.78% |sys | 2.26% |si|%MEM(MB)|  5.98% |use |77.33/487.11 |buff/cache |PID:IV_Fusion (4216)|CPU(s) | 11.21% |use | 9.48% |usr | 1.72% |sys |MEM | 1.07%|PID:can_sensorparse (4155)|CPU(s) |  0.83% |use | 0.00% |usr | 0.83% |sys |MEM | 0.19%|PID:stress (x)|CPU(s) |  |use | |usr | |sys |MEM | |
+```
+当处于监控中的进程退出时会记录smm.notice
+如下
+```
+2020-07-24 13:40:17. 1 NOTICE - pid_name (stress) has dead!! 
+2020-07-24 13:40:31. 1 NOTICE - pid_name (stress) has dead!! 
+```
+记录的日志采用markdown的格式，需要自己添加一个头即可形成表格的形式。

@@ -11,7 +11,7 @@ zlog_category_t *zc = NULL;             /**日志描述符*/
 static u8 help[] =
     "\
         \r\n Usage   : \
-        \r\n    smm [options] -t <Monitoring period> -p {[app_name1];[name2];..}\
+        \r\n    smm [options] -t <Monitoring period> -p {[app_name1]:[name2]:..}\
         \r\n    options\
         \r\n        -h,--help                          get app help\
         \r\n        -d,--display                       display monitoring results\
@@ -118,6 +118,7 @@ void smm_checkpid_by_name(struct smm_contrl *contrl, struct smm_pid_msg *pid_msg
     u32 pid = 0;
     u32 pid_num = 0;
     static u32 pid_old = 0;
+
     memset(contrl->smm_pid_valid, 0, sizeof(contrl->smm_pid_valid));
     for (u8 i = 0; i <= pid_msg->parse_pid_num; i++)
     {
@@ -130,7 +131,7 @@ void smm_checkpid_by_name(struct smm_contrl *contrl, struct smm_pid_msg *pid_msg
         }
         else
         {
-            if (pid_old != contrl->smm_pid[i])
+            if (pid_old != contrl->smm_pid[i])//记录过的不再重复进行记录
                 zlog_notice(zc, "pid_name (%s) has dead!! ", pid_msg->parse_pid_name[i].name);
             else
                 zlog_debug(zc, "pid_msg->pid_name %s has dead!! ", pid_msg->parse_pid_name[i].name);
@@ -207,17 +208,17 @@ void exit_usage()
  */
 static void smm_cmd_parse(u32 opt, u8 *optarg, u8 *argv)
 {
-    //默认参数
-    g_smm_contrl.interval = DEFAULT_INTERVAL;
-    g_smm_contrl.dealmode = DISPLAY_MODE;
 
-    if (opt == 'l')
-        g_smm_contrl.dealmode = LOG_MODE;
+
+    printf("---%c \r\n",opt);
+    printf("---g_smm_contrl.dealmode %d \r\n",g_smm_contrl.dealmode);
+    if (opt == 'd')
+        g_smm_contrl.dealmode = DISPLAY_MODE;
 
     if (opt == 't')
     {
-        if (atoi(optarg) > MIN_INTERVAL)
-            g_smm_contrl.interval = atoi(optarg);
+        if (atoi(argv) > MIN_INTERVAL)
+            g_smm_contrl.interval = atoi(argv);
 
         zlog_debug(zc, "g_smm_contrl.interval %d \r\n", g_smm_contrl.interval);
     }
@@ -226,6 +227,7 @@ static void smm_cmd_parse(u32 opt, u8 *optarg, u8 *argv)
     {
         smm_parse_pid_data(&g_smm_contrl, argv);
     }
+    printf("---g_smm_contrl.dealmode %d \r\n",g_smm_contrl.dealmode);
 }
 
 /**
@@ -250,9 +252,8 @@ void ms_sleep(u32 mSec)
  * 
  * @param arg 
  */
-void monitor_task(void *arg, struct smm_pid_msg *pid_msg)
+void smm_monitor(struct smm_contrl *contrl, struct smm_pid_msg *pid_msg)
 {
-    struct smm_contrl *contrl = (struct smm_contrl *)arg;
     u8 index = 0, pid_index = 0;
     u32 pid;
     struct smm_cpu_mem_stat cpu_stat[2] = {0}; //存放两个相近时刻的状态，用作计算
@@ -298,7 +299,7 @@ int main(int argc, char *argv[])
     u32 opt;
     u32 rc = 0;
     u32 option_index = 0;
-    u8 *string = "lt:p::";
+    u8 *string = "lt::p::";
 
     rc = zlog_init("/home/ab64/test/smm_log.conf");
     if (rc)
@@ -314,14 +315,16 @@ int main(int argc, char *argv[])
         zlog_fini();
         return -2;
     }
-
+    //默认参数
+    g_smm_contrl.interval = DEFAULT_INTERVAL;
+    g_smm_contrl.dealmode = LOG_MODE;
     while ((opt = getopt_long_only(argc, argv, string, long_options, &option_index)) != -1)
     {
-        //printf("opt = %c\t\t", opt);
-        //printf("optarg = %s\t\t", optarg);
-        //printf("optind = %d\t\t", optind);
-        //printf("argv[optind] =%s\t\t", argv[optind]);
-        //printf("option_index = %d\n", option_index);
+        printf("opt = %c\t\t", opt);
+        printf("optarg = %s\t\t", optarg);
+        printf("optind = %d\t\t", optind);
+        printf("argv[optind] =%s\t\t", argv[optind]);
+        printf("option_index = %d\n", option_index);
         switch (opt)
         {
         case 'l':
@@ -345,8 +348,8 @@ int main(int argc, char *argv[])
         smm_checkpid_by_name(&g_smm_contrl, &parse_pid_msg);
         memset((void *)&g_smm_contrl.result, 0, sizeof(g_smm_contrl.result));
         memset((void *)&g_smm_contrl.pid_result, 0, sizeof(g_smm_contrl.pid_result));
-        monitor_task((void *)&g_smm_contrl, &parse_pid_msg);
-        smm_deal_result((void *)&g_smm_contrl, &parse_pid_msg);
+        smm_monitor(&g_smm_contrl, &parse_pid_msg);
+        smm_deal_result(&g_smm_contrl, &parse_pid_msg);
     }
     zlog_fini();
     return 0;
