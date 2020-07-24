@@ -12,14 +12,13 @@
 #ifndef _SMM_H_
 #define _SMM_H_
 
-
-#define smm_deal(cat,dealmode, format, args...)                                             \
+#define smm_deal(cat, dealmode, format, args...)                                        \
     zlog(cat, __FILE__, sizeof(__FILE__) - 1, __func__, sizeof(__func__) - 1, __LINE__, \
          dealmode, format, ##args)
 
-
 #define DISPLAY_MODE 0 //使用打印模式
-#define LOG_MODE 1       //使用zlog的info模式
+#define LOG_MODE 1     //使用zlog的info模式
+#define ACTIVE 1
 
 #define MAX_PID_NUM 128
 #define PID_NAME_MAX_LEN 32   //进程名字最大长度
@@ -52,7 +51,7 @@ struct smm_pid_msg
  */
 struct smm_result
 {
-    u32 weight_times;//加权次数
+    u32 weight_times; //加权次数
     double r_cpu_ratio;
     double r_cpu_usr_ratio;
     double r_cpu_kernel_ratio;
@@ -81,10 +80,12 @@ struct smm_contrl
 {
     u32 interval; //监控的时间间隔 单位：mm
     u8 dealmode;  // 实时显示 / 记录日志
-    u8 pidnum;    //监控的进程数
-    u16 pad;      //保留
+    u8 pad1;
+    u16 pad2; //保留
     struct smm_result result;
-    u32 smm_pid[MAX_PID_NUM]; //进程PID
+
+    u32 smm_pid[MAX_PID_NUM];      //进程PID
+    u8 smm_pid_valid[MAX_PID_NUM]; //监控的进程是否有效
     struct smm_pid_name pid_name[MAX_PID_NUM];
     struct smm_pid_result pid_result[MAX_PID_NUM];
 };

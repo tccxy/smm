@@ -490,11 +490,12 @@ void pid_mem_ratio(u32 pid, struct smm_contrl *contrl, int index, void *data)
  * 
  * @param contrl 控制信息数据结构
  */
-void smm_deal_result(struct smm_contrl *contrl)
+void smm_deal_result(struct smm_contrl *contrl, struct smm_pid_msg *pid_msg)
 {
     u8 pid_index = 0;
     u8 info[4096] = {0};
     u32 info_len = 0;
+    u8 pid_num = 0;
     static int clear_screen_flag = 0, clear_screen_item = 0;
     zlog_debug(zc, "smm_deal_result weight times %d\r\n", contrl->result.weight_times);
     if (contrl->dealmode == DISPLAY_MODE)
@@ -516,16 +517,20 @@ void smm_deal_result(struct smm_contrl *contrl)
                contrl->result.r_mem_ratio / contrl->result.weight_times,
                contrl->result.r_mem_buffer / contrl->result.weight_times,
                contrl->result.r_mem_cache / contrl->result.weight_times);
-        for (pid_index = 0; pid_index < contrl->pidnum; pid_index++)
+        for (pid_index = 0; pid_index <= pid_msg->parse_pid_num; pid_index++)
         {
-            printf("PID:%s (%d) \r\n", contrl->pid_name[pid_index].name, contrl->smm_pid[pid_index]);
-            printf("CPU(s)  %5.2f%% use %5.2f%% usr %5.2f%% sys \r\n",
-                   contrl->pid_result[pid_index].r_pid_cpu_ratio, contrl->pid_result[pid_index].r_pid_cpu_usr_ratio,
-                   contrl->pid_result[pid_index].r_pid_cpu_sys_ratio);
-            printf("MEM %5.2f%%\r\n", contrl->pid_result[pid_index].r_pid_mem_ratio);
+            if (ACTIVE == contrl->smm_pid_valid[pid_index])
+            {
+                pid_num++;
+                printf("PID:%s (%d) \r\n", contrl->pid_name[pid_index].name, contrl->smm_pid[pid_index]);
+                printf("CPU(s)  %5.2f%% use %5.2f%% usr %5.2f%% sys \r\n",
+                       contrl->pid_result[pid_index].r_pid_cpu_ratio, contrl->pid_result[pid_index].r_pid_cpu_usr_ratio,
+                       contrl->pid_result[pid_index].r_pid_cpu_sys_ratio);
+                printf("MEM %5.2f%%\r\n", contrl->pid_result[pid_index].r_pid_mem_ratio);
+            }
         }
         clear_screen_flag = 1;
-        clear_screen_item = (contrl->pidnum * 3) + 2;
+        clear_screen_item = (pid_num * 3) + 2;
         //fflush(stdout);
     }
     //以md的格式进行记录
@@ -539,18 +544,29 @@ void smm_deal_result(struct smm_contrl *contrl)
             contrl->result.r_mem_buffer / contrl->result.weight_times,
             contrl->result.r_mem_cache / contrl->result.weight_times);
 
-    for (pid_index = 0; pid_index < contrl->pidnum; pid_index++)
+    for (pid_index = 0; pid_index <= pid_msg->parse_pid_num; pid_index++)
     {
         info_len = strlen(info);
-        sprintf(&info[info_len], "|PID:%s (%d)"
-                                 "|CPU(s) | %5.2f%% |use |%5.2f%% |usr |%5.2f%% |sys "
-                                 "|MEM |%5.2f%%",
-                contrl->pid_name[pid_index].name, contrl->smm_pid[pid_index],
-                contrl->pid_result[pid_index].r_pid_cpu_ratio,
-                contrl->pid_result[pid_index].r_pid_cpu_usr_ratio,
-                contrl->pid_result[pid_index].r_pid_cpu_sys_ratio,
-                contrl->pid_result[pid_index].r_pid_mem_ratio);
+        if (ACTIVE == contrl->smm_pid_valid[pid_index])
+        {
+            sprintf(&info[info_len], "|PID:%s (%d)"
+                                     "|CPU(s) | %5.2f%% |use |%5.2f%% |usr |%5.2f%% |sys "
+                                     "|MEM |%5.2f%%",
+                    contrl->pid_name[pid_index].name, contrl->smm_pid[pid_index],
+                    contrl->pid_result[pid_index].r_pid_cpu_ratio,
+                    contrl->pid_result[pid_index].r_pid_cpu_usr_ratio,
+                    contrl->pid_result[pid_index].r_pid_cpu_sys_ratio,
+                    contrl->pid_result[pid_index].r_pid_mem_ratio);
+        }
+        else
+        {
+            sprintf(&info[info_len], "|PID:%s (x)"
+                                     "|CPU(s) |  |use | |usr | |sys "
+                                     "|MEM | ",
+                    contrl->pid_name[pid_index].name);
+        }
     }
+
     info_len = strlen(info);
     sprintf(&info[info_len], "|");
     zlog_info(zc, "%s ", info);

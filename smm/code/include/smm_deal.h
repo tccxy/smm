@@ -23,8 +23,8 @@ extern unsigned int kb_shift;
  * kB <-> number of pages.
  * Page size depends on machine architecture (4 kB, 8 kB, 16 kB, 64 kB...)
  */
-#define KB_TO_PG(k)	((k) >> kb_shift)
-#define PG_TO_KB(k)	((k) << kb_shift)
+#define KB_TO_PG(k) ((k) >> kb_shift)
+#define PG_TO_KB(k) ((k) << kb_shift)
 /**
  * @brief cpu状态信息
  * 
@@ -53,8 +53,6 @@ struct smm_cpu_mem_stat
     u64 pid_rss;
 };
 
-
-
 #define total_stat(stat)                                                  \
     stat->cpu_user + stat->cpu_nice + stat->cpu_kernel + stat->cpu_idle + \
         stat->cpu_iowait + stat->cpu_irq + stat->cpu_softirq + stat->cpu_stealstolen
@@ -74,6 +72,6 @@ void pid_cpu_kernel_ratio(u32 pid, struct smm_contrl *contrl, int index, void *d
 void pid_mem_ratio(u32 pid, struct smm_contrl *contrl, int index, void *data);
 void pid_net_sd_rate(u32 pid, struct smm_contrl *contrl, int index, void *data);
 void pid_net_rc_rate(u32 pid, struct smm_contrl *contrl, int index, void *data);
-void smm_deal_result(struct smm_contrl *contrl);
+void smm_deal_result(struct smm_contrl *contrl, struct smm_pid_msg *pid_msg);
 
 #endif

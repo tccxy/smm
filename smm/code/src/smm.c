@@ -116,19 +116,25 @@ u32 get_pid_byname(pid_t *pid, char *task_name)
 void smm_checkpid_by_name(struct smm_contrl *contrl, struct smm_pid_msg *pid_msg)
 {
     u32 pid = 0;
-    contrl->pidnum = 0;
+    u32 pid_num = 0;
+    static u32 pid_old = 0;
+    memset(contrl->smm_pid_valid, 0, sizeof(contrl->smm_pid_valid));
     for (u8 i = 0; i <= pid_msg->parse_pid_num; i++)
     {
         if (SUCCESS == get_pid_byname(&pid, pid_msg->parse_pid_name[i].name))
         {
-            contrl->pidnum++;
+            pid_num++;
+            contrl->smm_pid_valid[i] = ACTIVE; //该进程真实有效
             contrl->smm_pid[i] = pid;
             memcpy(contrl->pid_name[i].name, pid_msg->parse_pid_name[i].name, strlen(pid_msg->parse_pid_name[i].name));
         }
         else
         {
-            zlog_debug(zc, "pid_msg->pid_name %s has dead!! ", pid_msg->parse_pid_name[i].name);
-            zlog_notice(zc, "pid_name (%s) has dead!! ", pid_msg->parse_pid_name[i].name);
+            if (pid_old != contrl->smm_pid[i])
+                zlog_notice(zc, "pid_name (%s) has dead!! ", pid_msg->parse_pid_name[i].name);
+            else
+                zlog_debug(zc, "pid_msg->pid_name %s has dead!! ", pid_msg->parse_pid_name[i].name);
+            pid_old = contrl->smm_pid[i];
         }
         zlog_debug(zc, "pid_msg->pid_name %s pid %d \r\n ", pid_msg->parse_pid_name[i].name, pid);
     }
@@ -204,7 +210,6 @@ static void smm_cmd_parse(u32 opt, u8 *optarg, u8 *argv)
     //默认参数
     g_smm_contrl.interval = DEFAULT_INTERVAL;
     g_smm_contrl.dealmode = DISPLAY_MODE;
-    g_smm_contrl.pidnum = 0;
 
     if (opt == 'l')
         g_smm_contrl.dealmode = LOG_MODE;
@@ -245,14 +250,12 @@ void ms_sleep(u32 mSec)
  * 
  * @param arg 
  */
-void monitor_task(void *arg)
+void monitor_task(void *arg, struct smm_pid_msg *pid_msg)
 {
     struct smm_contrl *contrl = (struct smm_contrl *)arg;
     u8 index = 0, pid_index = 0;
     u32 pid;
     struct smm_cpu_mem_stat cpu_stat[2] = {0}; //存放两个相近时刻的状态，用作计算
-
-    zlog_debug(zc, "monitor_task in pidnum %d \r\n", contrl->pidnum);
 
     /*系统级监控*/
     memset((void *)cpu_stat, 0, sizeof(cpu_stat));
@@ -264,22 +267,23 @@ void monitor_task(void *arg)
     }
 
     /*进程级监控*/
-    for (pid_index = 0; pid_index < contrl->pidnum; pid_index++)
+    for (pid_index = 0; pid_index <= pid_msg->parse_pid_num; pid_index++)
     {
-        pid = contrl->smm_pid[pid_index];
-        memset((void *)cpu_stat, 0, sizeof(cpu_stat));
-        if (cpu_stat_update(pid, cpu_stat, contrl) != SUCCESS)
+        if (ACTIVE == contrl->smm_pid_valid[pid_index]) //有效
         {
-            continue;//说明此时有进程发生退出
-        }
-        for (index = CPU_RATIO; index < SMM_PID_M_END; index++)
-        {
-            if (NULL != entry_register[index].p_dealfun)
-                entry_register[index].p_dealfun(pid, contrl, pid_index, (void *)cpu_stat);
+            pid = contrl->smm_pid[pid_index];
+            memset((void *)cpu_stat, 0, sizeof(cpu_stat));
+            if (cpu_stat_update(pid, cpu_stat, contrl) != SUCCESS)
+            {
+                continue; //说明此时有进程发生退出
+            }
+            for (index = CPU_RATIO; index < SMM_PID_M_END; index++)
+            {
+                if (NULL != entry_register[index].p_dealfun)
+                    entry_register[index].p_dealfun(pid, contrl, pid_index, (void *)cpu_stat);
+            }
         }
     }
-
-    smm_deal_result(contrl);
 }
 
 /**
@@ -341,7 +345,8 @@ int main(int argc, char *argv[])
         smm_checkpid_by_name(&g_smm_contrl, &parse_pid_msg);
         memset((void *)&g_smm_contrl.result, 0, sizeof(g_smm_contrl.result));
         memset((void *)&g_smm_contrl.pid_result, 0, sizeof(g_smm_contrl.pid_result));
-        monitor_task((void *)&g_smm_contrl);
+        monitor_task((void *)&g_smm_contrl, &parse_pid_msg);
+        smm_deal_result((void *)&g_smm_contrl, &parse_pid_msg);
     }
     zlog_fini();
     return 0;
