@@ -320,11 +320,11 @@ int main(int argc, char *argv[])
     g_smm_contrl.dealmode = LOG_MODE;
     while ((opt = getopt_long_only(argc, argv, string, long_options, &option_index)) != -1)
     {
-        printf("opt = %c\t\t", opt);
-        printf("optarg = %s\t\t", optarg);
-        printf("optind = %d\t\t", optind);
-        printf("argv[optind] =%s\t\t", argv[optind]);
-        printf("option_index = %d\n", option_index);
+        //printf("opt = %c\t\t", opt);
+        //printf("optarg = %s\t\t", optarg);
+        //printf("optind = %d\t\t", optind);
+        //printf("argv[optind] =%s\t\t", argv[optind]);
+        //printf("option_index = %d\n", option_index);
         switch (opt)
         {
         case 'l':

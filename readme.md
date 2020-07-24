@@ -50,17 +50,14 @@ smm_v1.0
 ```
 eg:
 sudo ./smm -d -t 1000 -p sshd:stress:vsftpd
-%CPU(s)  46.23% use 37.73% usr  5.39% sys  3.11% si 
-%MEM(MB) 21.08% use 77.36/488.94 buff/cache 
-PID:sshd (15402) 
-CPU(s)   0.00% use  0.00% usr  0.00% sys 
-MEM  0.19%
+%CPU(s)  43.43% use 32.93% usr  6.05% sys  4.45% si 
+%MEM(MB) 21.21% use 77.42/502.43 buff/cache 
 PID:stress (31765) 
-CPU(s)  25.64% use 25.64% usr  0.00% sys 
+CPU(s)  24.79% use 19.83% usr  4.96% sys 
 MEM 15.03%
-PID:vsftpd (3825) 
+PID:test (12214) 
 CPU(s)   0.00% use  0.00% usr  0.00% sys 
-MEM  0.10%
+MEM  0.07%
 ```
 
 其他：
