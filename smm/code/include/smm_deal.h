@@ -59,7 +59,7 @@ struct smm_cpu_mem_stat
     stat->cpu_user + stat->cpu_nice + stat->cpu_kernel + stat->cpu_idle + \
         stat->cpu_iowait + stat->cpu_irq + stat->cpu_softirq + stat->cpu_stealstolen
 
-void cpu_stat_update(u32 pid, struct smm_cpu_mem_stat *stat, struct smm_contrl *contrl);
+u32 cpu_stat_update(u32 pid, struct smm_cpu_mem_stat *stat, struct smm_contrl *contrl);
 void cpu_ratio(u32 pid, struct smm_contrl *contrl, int index, void *data);
 void cpu_usr_ratio(u32 pid, struct smm_contrl *contrl, int index, void *data);
 void cpu_kernel_ratio(u32 pid, struct smm_contrl *contrl, int index, void *data);

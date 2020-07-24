@@ -5,8 +5,8 @@
  * 
  */
 struct smm_contrl g_smm_contrl = {0};
-
-zlog_category_t *zc = NULL; /**日志描述符*/
+struct smm_pid_msg parse_pid_msg = {0}; //从输入参数解析的进程信息
+zlog_category_t *zc = NULL;             /**日志描述符*/
 
 static u8 help[] =
     "\
@@ -107,6 +107,34 @@ u32 get_pid_byname(pid_t *pid, char *task_name)
 }
 
 /**
+ * @brief smm通过进程名字校验是否为有效的pid
+ * 
+ * @param contrl 控制信息数据结构
+ * @param pid 从参数解析的数据结构
+ * @return u32 
+ */
+void smm_checkpid_by_name(struct smm_contrl *contrl, struct smm_pid_msg *pid_msg)
+{
+    u32 pid = 0;
+    contrl->pidnum = 0;
+    for (u8 i = 0; i <= pid_msg->parse_pid_num; i++)
+    {
+        if (SUCCESS == get_pid_byname(&pid, pid_msg->parse_pid_name[i].name))
+        {
+            contrl->pidnum++;
+            contrl->smm_pid[i] = pid;
+            memcpy(contrl->pid_name[i].name, pid_msg->parse_pid_name[i].name, strlen(pid_msg->parse_pid_name[i].name));
+        }
+        else
+        {
+            zlog_debug(zc, "pid_msg->pid_name %s has dead!! ", pid_msg->parse_pid_name[i].name);
+            zlog_notice(zc, "pid_name (%s) has dead!! ", pid_msg->parse_pid_name[i].name);
+        }
+        zlog_debug(zc, "pid_msg->pid_name %s pid %d \r\n ", pid_msg->parse_pid_name[i].name, pid);
+    }
+}
+
+/**
  * @brief smm 从传入的参数解析pid的数据
  * 
  * @param contrl smm contrl数据结构
@@ -118,8 +146,6 @@ u32 smm_parse_pid_data(struct smm_contrl *contrl, u8 *arg)
     u32 ret = SUCCESS;
     u8 pidnum = 0;
     u8 *data = NULL;
-    u32 pid = 0;
-    struct smm_pid_msg pid_msg = {0};
 
     zlog_debug(zc, "arg is %s \r\n", arg);
     for (data = arg; *data != '\0'; data++)
@@ -131,22 +157,18 @@ u32 smm_parse_pid_data(struct smm_contrl *contrl, u8 *arg)
     zlog_debug(zc, "pidnum is %d \r\n", pidnum);
     data = arg;
     zlog_debug(zc, "data is %s \r\n", data);
+    parse_pid_msg.parse_pid_num = pidnum; //从输入参数解析而来的进程数
     for (u8 i = 0; i <= pidnum; i++)
     {
-        sscanf(data, "%[^:]%*c", pid_msg.pid_name[i].name);
-        data += strlen(pid_msg.pid_name[i].name) + 1;
-        zlog_debug(zc, "pid_msg.pid_name %s \r\n ", pid_msg.pid_name[i].name);
-        if (SUCCESS == get_pid_byname(&pid, pid_msg.pid_name[i].name))
-        {
-            contrl->pidnum++;
-            contrl->smm_pid[i] = pid;
-            memcpy(contrl->pid_name[i].name, pid_msg.pid_name[i].name, strlen(pid_msg.pid_name[i].name));
-        }
-        zlog_debug(zc, "pid_msg.pid_name %s pid %d \r\n ", pid_msg.pid_name[i].name, pid);
+        sscanf(data, "%[^:]%*c", parse_pid_msg.parse_pid_name[i].name);
+        data += strlen(parse_pid_msg.parse_pid_name[i].name) + 1;
+        zlog_debug(zc, "pid_msg.pid_name %s \r\n ", parse_pid_msg.parse_pid_name[i].name);
+        zlog_debug(zc, "parse_pid_msg.pid_name %s  \r\n ", parse_pid_msg.parse_pid_name[i].name);
     }
 
     return ret;
 }
+
 /**
  * 
  * @brief 打印帮助信息
@@ -246,7 +268,10 @@ void monitor_task(void *arg)
     {
         pid = contrl->smm_pid[pid_index];
         memset((void *)cpu_stat, 0, sizeof(cpu_stat));
-        cpu_stat_update(pid, cpu_stat, contrl);
+        if (cpu_stat_update(pid, cpu_stat, contrl) != SUCCESS)
+        {
+            continue;//说明此时有进程发生退出
+        }
         for (index = CPU_RATIO; index < SMM_PID_M_END; index++)
         {
             if (NULL != entry_register[index].p_dealfun)
@@ -313,6 +338,7 @@ int main(int argc, char *argv[])
     while (1)
     {
         ms_sleep(g_smm_contrl.interval);
+        smm_checkpid_by_name(&g_smm_contrl, &parse_pid_msg);
         memset((void *)&g_smm_contrl.result, 0, sizeof(g_smm_contrl.result));
         memset((void *)&g_smm_contrl.pid_result, 0, sizeof(g_smm_contrl.pid_result));
         monitor_task((void *)&g_smm_contrl);

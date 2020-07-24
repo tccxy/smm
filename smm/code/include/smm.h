@@ -41,8 +41,8 @@ struct smm_pid_name
  */
 struct smm_pid_msg
 {
-    struct smm_pid_name pid_name[MAX_PID_NUM];
-    u32 smm_pid[MAX_PID_NUM];
+    struct smm_pid_name parse_pid_name[MAX_PID_NUM];
+    u32 parse_pid_num;
     u8 flag;
 };
 
