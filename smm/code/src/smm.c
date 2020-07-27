@@ -131,7 +131,7 @@ void smm_checkpid_by_name(struct smm_contrl *contrl, struct smm_pid_msg *pid_msg
         }
         else
         {
-            if (pid_old != contrl->smm_pid[i])//记录过的不再重复进行记录
+            if (pid_old != contrl->smm_pid[i] && contrl->smm_pid[i] != 0) //记录过的不再重复进行记录
                 zlog_notice(zc, "pid_name (%s) has dead!! ", pid_msg->parse_pid_name[i].name);
             else
                 zlog_debug(zc, "pid_msg->pid_name %s has dead!! ", pid_msg->parse_pid_name[i].name);
@@ -208,10 +208,6 @@ void exit_usage()
  */
 static void smm_cmd_parse(u32 opt, u8 *optarg, u8 *argv)
 {
-
-
-    printf("---%c \r\n",opt);
-    printf("---g_smm_contrl.dealmode %d \r\n",g_smm_contrl.dealmode);
     if (opt == 'd')
         g_smm_contrl.dealmode = DISPLAY_MODE;
 
@@ -227,7 +223,6 @@ static void smm_cmd_parse(u32 opt, u8 *optarg, u8 *argv)
     {
         smm_parse_pid_data(&g_smm_contrl, argv);
     }
-    printf("---g_smm_contrl.dealmode %d \r\n",g_smm_contrl.dealmode);
 }
 
 /**
@@ -301,7 +296,7 @@ int main(int argc, char *argv[])
     u32 option_index = 0;
     u8 *string = "lt::p::";
 
-    rc = zlog_init("/home/ab64/test/smm_log.conf");
+    rc = zlog_init("/usp/usp_log.conf");
     if (rc)
     {
         printf("init failed\n");
