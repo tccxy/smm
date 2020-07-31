@@ -88,3 +88,4 @@ https://tableconvert.com
 2020-07-24 13:40:31. 1 NOTICE - pid_name (stress) has dead!! 
 ```
 记录的日志采用markdown的格式，需要自己添加一个头即可形成表格的形式。
+按照代码所带的zlog模板，对于info会进行1MB * 5的循环记录，后缀以00 01 02 等来标注，对于notice则进行1MB * 1的循环记录，可以根据自己的需要进行更改
